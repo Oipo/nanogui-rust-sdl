@@ -2,11 +2,11 @@ extern crate sdl2;
 extern crate sdl2_sys;
 extern crate nanovg;
 
-use widget::{Widget, WidgetObj};
+use std::fmt;
+use widget::{Widget, WidgetObj, WidgetObjRef};
 
-pub struct ScreenObj<'a> {
-    widget: WidgetObj,
-    window: &'a mut sdl2::video::Window,
+pub struct ScreenObj {
+    widget: WidgetObjRef,
     nanovg_context: nanovg::Context,
     //focuspath?
     framebuffer_size: (u32, u32),
@@ -22,8 +22,30 @@ pub struct ScreenObj<'a> {
     caption: String
 }
 
-impl<'a> ScreenObj<'a> {
-    pub fn new(id: String, caption: String, window: &'a mut sdl2::video::Window) -> ScreenObj {
+impl Widget for ScreenObj {
+    fn widget_obj(&self) -> &WidgetObj {
+        &self.widget.0
+    }
+
+    fn widget_obj_mut(&mut self) -> &mut WidgetObj {
+        &mut self.widget.0
+    }
+
+    /*fn widget_obj_ref(&self) -> &WidgetObjRef {
+        &self.widget
+    }
+
+    fn widget_obj_ref_mut(&mut self) -> &mut WidgetObjRef {
+        &mut self.widget
+    }*/
+
+    fn draw(&self, nanovg_context: &nanovg::Context) {
+        self.draw_widgets();
+    }
+}
+
+impl ScreenObj {
+    pub fn new(id: String, caption: String, window: &mut sdl2::video::WindowRef) -> ScreenObj {
 
         let winsize = window.size();
         window.set_title(&caption);
@@ -31,7 +53,6 @@ impl<'a> ScreenObj<'a> {
         unsafe {
             let mut screen: ScreenObj = ScreenObj {
                 widget: WidgetObj::new(id),
-                window: window,
                 nanovg_context: nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES),
                 caption: caption,
                 framebuffer_size: winsize,
@@ -46,20 +67,28 @@ impl<'a> ScreenObj<'a> {
                 pixel_ratio: 0.0
             };
 
-            screen.widget.size = winsize;
+            screen.widget.set_size(winsize);
             screen
         }
     }
 
     pub fn draw_widgets(&self) {
-        if !self.widget.visible {
+        if !self.widget.visible() {
             return
         }
 
-        self.nanovg_context.begin_frame(self.widget.size.0, self.widget.size.1, 1.0);
+        self.nanovg_context.begin_frame(self.widget.size().0, self.widget.size().1, 1.0);
 
         self.widget.draw(&self.nanovg_context);
 
         self.nanovg_context.end_frame();
+    }
+
+    pub fn set_background(&mut self, background_color: (f32, f32, f32)) {
+        self.background = background_color;
+    }
+
+    pub fn nanovg_context(&self) -> &nanovg::Context {
+        &self.nanovg_context
     }
 }
