@@ -1,18 +1,16 @@
 extern crate nanovg;
 
 use std::fmt;
-//use std::mem;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
-//use std::ops::{Deref, DerefMut};
+use theme::Theme;
 
 pub struct WidgetObjRef(pub Rc<RefCell<WidgetObj>>);
 
-#[derive(Debug)]
 pub struct WidgetObj {
     parent: Option<Weak<RefCell<Widget>>>,
     children: Vec<Rc<RefCell<Widget>>>,
-    //theme: theme,
+    theme: Option<Rc<RefCell<Theme>>>,
     //layout: layout,
     id: String,
     pos: (u32, u32),
@@ -23,7 +21,7 @@ pub struct WidgetObj {
     focused: bool,
     mouse_focus: bool,
     tooltip: String,
-    font_size: u32,
+    font_size: i32,
     //cursor: cursor
 }
 
@@ -99,12 +97,45 @@ pub trait Widget {
         self.widget_obj_mut().fixed_size = s;
     }
 
-    fn font_size(&self) -> u32 {
-        self.widget_obj().font_size
+    fn font_size(&self) -> i32 {
+        match self.widget_obj().theme {
+            Some(ref val) => {
+                if self.widget_obj().font_size < 0 {
+                    return val.borrow().standard_font_size();
+                }
+
+                return self.widget_obj().font_size;
+            },
+            None => self.widget_obj().font_size
+        }
     }
 
-    fn set_font_size(&mut self, s: u32) {
+    fn set_font_size(&mut self, s: i32) {
         self.widget_obj_mut().font_size = s;
+    }
+
+    fn theme(&self) -> &Option<Rc<RefCell<Theme>>> {
+        &self.widget_obj().theme
+    }
+
+    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>) {
+        self.widget_obj_mut().theme = theme
+    }
+
+    fn enabled(&self) -> bool {
+        self.widget_obj().enabled
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.widget_obj_mut().enabled = enabled;
+    }
+
+    fn tooltip(&self) -> String {
+        self.widget_obj().tooltip.clone()
+    }
+
+    fn set_tooltip(&mut self, tooltip: String) {
+        self.widget_obj_mut().tooltip = tooltip.clone();
     }
 
     fn visible(&self) -> bool {
@@ -113,12 +144,12 @@ pub trait Widget {
 
     fn absolute_position(&self) -> (u32, u32) {
         match *self.parent() {
-            None => self.pos().clone(),
             Some(ref val) =>  {
                 let parent = val.upgrade().unwrap();
                 let (par_x, par_y) = parent.borrow().absolute_position();
                 (par_x + self.pos().0, par_y + self.pos().1)
-            }
+            },
+            None => self.pos().clone()
         }
     }
 
@@ -128,12 +159,12 @@ pub trait Widget {
         }
 
         match *self.parent() {
-            None => self.visible(),
             Some(ref val) => {
                 let parent = val.upgrade().unwrap();
                 let visible = parent.borrow().visible_recursive();
                 visible
-            }
+            },
+            None => self.visible()
         }
     }
 
@@ -177,10 +208,24 @@ impl Widget for WidgetObj {
 }
 
 impl WidgetObjRef {
-    pub fn new(id: String) -> WidgetObjRef {
+    pub fn new(id: String, parent: Option<Rc<RefCell<Widget>>>) -> WidgetObjRef {
+        let parent_theme: Option<Rc<RefCell<Theme>>> = match parent {
+            Some(ref val) => {
+                match *val.borrow().theme() {
+                    Some(ref val) => Some(val.clone()),
+                    None => None
+                }
+            },
+            None => None
+        };
+        let parent_weak: Option<Weak<RefCell<Widget>>> = match parent {
+            Some(ref val) => Some(Rc::downgrade(val)),
+            None => None
+        };
         WidgetObjRef(Rc::new(RefCell::new(WidgetObj {
-            parent: None,
+            parent: parent_weak,
             children: Vec::new(),
+            theme: parent_theme,
             id: id,
             pos: (0, 0),
             size: (0, 0),
@@ -290,12 +335,44 @@ impl WidgetObjRef {
         self.0.borrow_mut().fixed_size = s;
     }
 
-    pub fn font_size(&self) -> u32 {
+    pub fn font_size(&self) -> i32 {
         self.0.borrow().font_size
     }
 
-    pub fn set_font_size(&self, s: u32) {
+    pub fn set_font_size(&self, s: i32) {
         self.0.borrow_mut().font_size = s;
+    }
+
+    pub fn theme(&self) -> Option<Rc<RefCell<Theme>>> {
+        let mut theme: Option<Rc<RefCell<Theme>>> = None;
+        {
+            let obj_borrow = self.0.borrow();
+            match *obj_borrow.theme() {
+                Some(ref val) => theme = Some(val.clone()),
+                _ => {}
+            }
+        }
+        return theme;
+    }
+
+    pub fn set_theme(&self, theme: Option<Rc<RefCell<Theme>>>) {
+        self.0.borrow_mut().theme = theme;
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.0.borrow().enabled
+    }
+
+    pub fn set_enabled(&self, enabled: bool) {
+        self.0.borrow_mut().enabled = enabled;
+    }
+
+    pub fn tooltip(&self) -> String {
+        self.0.borrow().tooltip.clone()
+    }
+
+    pub fn set_tooltip(&self, tooltip: String) {
+        self.0.borrow_mut().tooltip = tooltip.clone();
     }
 
     pub fn visible(&self) -> bool {
