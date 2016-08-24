@@ -1,11 +1,15 @@
 extern crate nanoguirustsdl;
 extern crate nanovg;
+extern crate gl;
+extern crate sdl2;
 
 use nanoguirustsdl::widget::WidgetObjRef;
 use nanoguirustsdl::theme::Theme;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::DerefMut;
+
+use sdl2::video::{GLProfile, WindowRef, GLContext};
 
 #[test]
 fn push_child_test() {
@@ -93,6 +97,48 @@ fn parent_test() {
 
 #[test]
 fn theme_test() {
+
+    fn init_gl(window: &WindowRef) -> GLContext {
+        unsafe {gl::FrontFace(gl::CCW)};
+        unsafe {gl::Enable(gl::DEPTH_TEST)};
+        unsafe {gl::Enable(gl::SCISSOR_TEST)};
+        unsafe {gl::DepthFunc(gl::LEQUAL)};
+        unsafe {gl::FrontFace(gl::CCW)};
+        unsafe {gl::Enable(gl::CULL_FACE)};
+        unsafe {gl::CullFace(gl::BACK)};
+
+        let gl_context = window.gl_create_context().unwrap();
+        match window.gl_make_current(&gl_context) {
+            Err(val) => {
+                println!("make_current error: {}", val);
+                panic!("err");
+            },
+            _ => {}
+        }
+
+        gl_context
+    }
+
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let gl_attr = video_subsystem.gl_attr();
+    gl_attr.set_context_profile(GLProfile::Core);
+    gl_attr.set_context_flags().debug().forward_compatible().set();
+    gl_attr.set_context_version(3, 2);
+    gl_attr.set_stencil_size(8);
+
+    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+        .position_centered()
+        .opengl()
+        .build()
+        .unwrap();
+
+    gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
+    let gl_context = init_gl(&window);
+
+        //let mut event_pump = sdl_context.event_pump().unwrap();
+
     let nanovg_context = nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES);
     let theme = Rc::new(RefCell::new(Theme::new(&nanovg_context)));
     theme.borrow_mut().deref_mut().set_standard_font_size(20);
