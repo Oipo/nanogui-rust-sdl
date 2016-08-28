@@ -16,6 +16,8 @@ interpolate_idents = "*"
 
 [dependencies.nanovg]
 git = "https://github.com/Oipo/nanovg-rs"
+#TODO when nanovg doesn't return valid ptr, make nanovg-rs panic
+#path = "../nanovg-rs-oipo"
 features = ["gl3"]
 
 [build-dependencies]

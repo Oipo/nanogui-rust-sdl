@@ -2,9 +2,12 @@ extern crate sdl2;
 extern crate sdl2_sys;
 extern crate nanovg;
 
-use std::fmt;
+use std::cell::RefCell;
+use std::rc::Rc;
 use widget::{Widget, WidgetObj, WidgetObjRef};
+use theme::Theme;
 
+#[allow(dead_code)]
 pub struct ScreenObj {
     widget: WidgetObjRef,
     nanovg_context: nanovg::Context,
@@ -22,25 +25,120 @@ pub struct ScreenObj {
     caption: String
 }
 
+#[allow(unused_variables)]
 impl Widget for ScreenObj {
-    fn widget_obj(&self) -> &WidgetObj {
-        &self.widget.0
+    fn parent(&self) -> Option<*mut Widget> {
+        self.widget.parent()
     }
 
-    fn widget_obj_mut(&mut self) -> &mut WidgetObj {
-        &mut self.widget.0
+    fn set_parent(&mut self, parent: Option<*mut Widget>) {
+        self.widget.set_parent(parent);
     }
 
-    /*fn widget_obj_ref(&self) -> &WidgetObjRef {
-        &self.widget
+    fn children(&self) -> Vec<Rc<RefCell<Widget>>> {
+        self.widget.children()
     }
 
-    fn widget_obj_ref_mut(&mut self) -> &mut WidgetObjRef {
-        &mut self.widget
-    }*/
+    fn remove_child_by_id(&mut self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        self.widget.remove_child_by_id(id)
+    }
+
+    fn remove_child_by_child(&mut self, child: &mut Widget) {
+        self.widget.remove_child_by_child(child);
+    }
+
+    fn push_child(&mut self, new_child: Rc<RefCell<Widget>>) {
+        self.widget.push_child(new_child);
+    }
+
+    fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        self.widget.get_child_by_id(id)
+    }
+
+    fn id(&self) -> String {
+        self.widget.id()
+    }
+
+    fn pos(&self) -> (u32, u32) {
+        self.widget.pos()
+    }
+
+    fn set_pos(&mut self, p: (u32, u32)) {
+        self.widget.set_pos(p);
+    }
+
+    fn size(&self) -> (u32, u32) {
+        self.widget.size()
+    }
+
+    fn set_size(&mut self, s: (u32, u32)) {
+        self.widget.set_size(s);
+    }
+
+    fn fixed_size(&self) -> (u32, u32) {
+        self.widget.fixed_size()
+    }
+
+    fn set_fixed_size(&mut self, s: (u32, u32)) {
+        self.widget.set_fixed_size(s);
+    }
+
+    fn font_size(&self) -> i32 {
+        self.widget.font_size()
+    }
+
+    fn set_font_size(&mut self, s: i32) {
+        self.widget.set_font_size(s);
+    }
+
+    fn theme(&self) -> Option<Rc<RefCell<Theme>>> {
+        self.widget.theme()
+    }
+
+    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>) {
+        self.widget.set_theme(theme);
+    }
+
+    fn enabled(&self) -> bool {
+        self.widget.enabled()
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.widget.set_enabled(enabled);
+    }
+
+    fn tooltip(&self) -> String {
+        self.widget.tooltip()
+    }
+
+    fn set_tooltip(&mut self, tooltip: String) {
+        self.widget.set_tooltip(tooltip);
+    }
+
+    fn visible(&self) -> bool {
+        self.widget.visible()
+    }
 
     fn draw(&self, nanovg_context: &nanovg::Context) {
-        self.draw_widgets();
+        self.draw_widgets()
+    }
+
+    fn absolute_position(&self) -> (u32, u32) {
+        self.widget.absolute_position()
+    }
+
+    fn visible_recursive(&self) -> bool {
+        self.widget.visible_recursive()
+    }
+
+    fn contains(&self, p: (u32, u32)) -> bool {
+        // TODO
+        return false
+    }
+
+    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
+        // TODO
+        return None
     }
 }
 
@@ -52,7 +150,7 @@ impl ScreenObj {
 
         unsafe {
             let mut screen: ScreenObj = ScreenObj {
-                widget: WidgetObj::new(id),
+                widget: WidgetObjRef::new(id, None),
                 nanovg_context: nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES),
                 caption: caption,
                 framebuffer_size: winsize,

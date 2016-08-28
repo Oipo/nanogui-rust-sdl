@@ -12,9 +12,9 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::{GLProfile, WindowRef, GLContext};
-/*use nanoguirustsdl::screen::{ScreenObj};
+use nanoguirustsdl::screen::{ScreenObj};
 use nanoguirustsdl::label::{LabelObj};
-use nanoguirustsdl::widget::{Widget};*/
+use nanoguirustsdl::widget::{Widget};
 
 fn init_gl(window: &WindowRef) -> GLContext {
     unsafe {gl::FrontFace(gl::CCW)};
@@ -59,11 +59,12 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let vg: nanovg::Context = nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES);
-    /*let mut screen: ScreenObj = ScreenObj::new("test screen".to_string(), "Test screen".to_string(), &mut window);
-    let mut label: Rc<RefCell<LabelObj>> = LabelObj::new("test label".to_string(), "This is a label".to_string(), "Roboto-Regular.ttf".to_string(), screen.nanovg_context());
-    label.borrow_mut().widget_obj_mut().set_size((200, 20));
-    label.borrow_mut().widget_obj_mut().set_fixed_size((200, 20));
-    screen.push_child(label.clone());*/
+    let mut screen: ScreenObj = ScreenObj::new("test screen".to_string(), "Test screen".to_string(), &mut window);
+    let mut label: Rc<RefCell<LabelObj>> = Rc::new(RefCell::new(LabelObj::new_create_font("test label".to_string(), "This is a label".to_string(), "Roboto-Regular.ttf".to_string(), screen.nanovg_context())));
+    label.borrow_mut().set_size((200, 20));
+    label.borrow_mut().set_fixed_size((200, 20));
+    label.borrow_mut().set_font_size(22);
+    screen.push_child(label.clone());
 
     let mut posx = 0;
     let mut posy = 0;
@@ -79,13 +80,23 @@ fn main() {
 
         unsafe {gl::ClearColor(0.0, 0.0, 0.0, 0.0)};
         unsafe {gl::Clear(gl::COLOR_BUFFER_BIT|gl::DEPTH_BUFFER_BIT|gl::STENCIL_BUFFER_BIT)};
+        unsafe {gl::Enable(gl::BLEND)};
+        unsafe {gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA)};
+        unsafe {gl::Enable(gl::CULL_FACE)};
+        unsafe {gl::Disable(gl::DEPTH_TEST)};
 
-        //screen.draw(&vg);
+        screen.draw(&vg);
 
         window.gl_swap_window();
 
-        //label.borrow_mut().set_pos((posx, posy));
+        label.borrow_mut().set_pos((posx, posy));
         posx += 1;
         posy += 1;
+
+        if posy > 580
+        {
+            posx = 0;
+            posy = 0;
+        }
     }
 }

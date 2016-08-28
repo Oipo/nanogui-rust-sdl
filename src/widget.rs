@@ -1,14 +1,16 @@
 extern crate nanovg;
 
 use std::fmt;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::RefCell;
+use std::ops::DerefMut;
 use theme::Theme;
 
 pub struct WidgetObjRef(pub Rc<RefCell<WidgetObj>>);
 
+#[allow(dead_code)]
 pub struct WidgetObj {
-    parent: Option<Weak<RefCell<Widget>>>,
+    parent: Option<*mut Widget>,
     children: Vec<Rc<RefCell<Widget>>>,
     theme: Option<Rc<RefCell<Theme>>>,
     //layout: layout,
@@ -26,163 +28,34 @@ pub struct WidgetObj {
 }
 
 pub trait Widget {
-    fn widget_obj(&self) -> &WidgetObj;
-    fn widget_obj_mut(&mut self) -> &mut WidgetObj;
-
-    fn parent(&self) -> &Option<Weak<RefCell<Widget>>> {
-        &self.widget_obj().parent
-    }
-
-    fn children(&self) -> &Vec<Rc<RefCell<Widget>>> {
-        &self.widget_obj().children
-    }
-
-    fn remove_child_by_id(&mut self, id: String) -> Option<Rc<RefCell<Widget>>> {
-        let ref mut temp_children = self.widget_obj_mut().children;
-        let position = temp_children.iter().position(|x| x.borrow().id() == id);
-        match position {
-            Some(index) => {
-                let removed_child = temp_children.swap_remove(index).clone();
-                removed_child.borrow_mut().widget_obj_mut().parent = None;
-                Some(removed_child)
-            },
-            _ => None
-        }
-    }
-
-    fn remove_child_by_child(&mut self, child: &mut Widget) {
-        let ref mut temp_children = self.widget_obj_mut().children;
-        let position = temp_children.iter().position(|x| x.borrow().id() == child.id());
-        match position {
-            Some(index) => {
-                temp_children.swap_remove(index).clone();
-                child.widget_obj_mut().parent = None;
-            },
-            _ => {}
-        }
-    }
-
-    fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
-        match self.widget_obj().children.iter().position(|x| x.borrow().id() == id) {
-            Some(index) => Some(self.widget_obj().children.get(index).unwrap().clone()),
-            _ => None
-        }
-    }
-
-    fn id(&self) -> String {
-        self.widget_obj().id.clone()
-    }
-
-    fn pos(&self) -> (u32, u32) {
-        self.widget_obj().pos
-    }
-
-    fn set_pos(&mut self, p: (u32, u32)) {
-        self.widget_obj_mut().pos = p;
-    }
-
-    fn size(&self) -> (u32, u32) {
-        self.widget_obj().size
-    }
-
-    fn set_size(&mut self, s: (u32, u32)) {
-        self.widget_obj_mut().size = s;
-    }
-
-    fn fixed_size(&self) -> (u32, u32) {
-        self.widget_obj().fixed_size
-    }
-
-    fn set_fixed_size(&mut self, s: (u32, u32)) {
-        self.widget_obj_mut().fixed_size = s;
-    }
-
-    fn font_size(&self) -> i32 {
-        match self.widget_obj().theme {
-            Some(ref val) => {
-                if self.widget_obj().font_size < 0 {
-                    return val.borrow().standard_font_size();
-                }
-
-                return self.widget_obj().font_size;
-            },
-            None => self.widget_obj().font_size
-        }
-    }
-
-    fn set_font_size(&mut self, s: i32) {
-        self.widget_obj_mut().font_size = s;
-    }
-
-    fn theme(&self) -> &Option<Rc<RefCell<Theme>>> {
-        &self.widget_obj().theme
-    }
-
-    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>) {
-        self.widget_obj_mut().theme = theme
-    }
-
-    fn enabled(&self) -> bool {
-        self.widget_obj().enabled
-    }
-
-    fn set_enabled(&mut self, enabled: bool) {
-        self.widget_obj_mut().enabled = enabled;
-    }
-
-    fn tooltip(&self) -> String {
-        self.widget_obj().tooltip.clone()
-    }
-
-    fn set_tooltip(&mut self, tooltip: String) {
-        self.widget_obj_mut().tooltip = tooltip.clone();
-    }
-
-    fn visible(&self) -> bool {
-        self.widget_obj().visible
-    }
-
-    fn absolute_position(&self) -> (u32, u32) {
-        match *self.parent() {
-            Some(ref val) =>  {
-                let parent = val.upgrade().unwrap();
-                let (par_x, par_y) = parent.borrow().absolute_position();
-                (par_x + self.pos().0, par_y + self.pos().1)
-            },
-            None => self.pos().clone()
-        }
-    }
-
-    fn visible_recursive(&self) -> bool {
-        if !self.visible() {
-            return false
-        }
-
-        match *self.parent() {
-            Some(ref val) => {
-                let parent = val.upgrade().unwrap();
-                let visible = parent.borrow().visible_recursive();
-                visible
-            },
-            None => self.visible()
-        }
-    }
-
-    fn contains(&self, p: (u32, u32)) -> bool {
-        // TODO
-        return false
-    }
-
-    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
-        // TODO
-        return None
-    }
-
-    fn draw(&self, nanovg_context: &nanovg::Context) {
-        for child in &self.widget_obj().children {
-            child.borrow().draw(nanovg_context);
-        }
-    }
+    fn parent(&self) -> Option<*mut Widget>;
+    fn set_parent(&mut self, Option<*mut Widget>);
+    fn children(&self) -> Vec<Rc<RefCell<Widget>>>;
+    fn remove_child_by_id(&mut self, id: String) -> Option<Rc<RefCell<Widget>>>;
+    fn remove_child_by_child(&mut self, child: &mut Widget);
+    fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>>;
+    fn push_child(&mut self, new_child: Rc<RefCell<Widget>>);
+    fn id(&self) -> String;
+    fn pos(&self) -> (u32, u32);
+    fn set_pos(&mut self, p: (u32, u32));
+    fn size(&self) -> (u32, u32);
+    fn set_size(&mut self, s: (u32, u32));
+    fn fixed_size(&self) -> (u32, u32);
+    fn set_fixed_size(&mut self, s: (u32, u32));
+    fn font_size(&self) -> i32;
+    fn set_font_size(&mut self, s: i32);
+    fn theme(&self) -> Option<Rc<RefCell<Theme>>>;
+    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>);
+    fn enabled(&self) -> bool;
+    fn set_enabled(&mut self, enabled: bool);
+    fn tooltip(&self) -> String;
+    fn set_tooltip(&mut self, tooltip: String);
+    fn visible(&self) -> bool;
+    fn absolute_position(&self) -> (u32, u32);
+    fn visible_recursive(&self) -> bool;
+    fn contains(&self, p: (u32, u32)) -> bool;
+    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>>;
+    fn draw(&self, nanovg_context: &nanovg::Context);
 }
 
 impl PartialEq for Widget {
@@ -197,33 +70,382 @@ impl fmt::Debug for Widget {
     }
 }
 
+#[allow(unused_variables)]
 impl Widget for WidgetObj {
-    fn widget_obj(&self) -> &WidgetObj {
-        self
+    fn parent(&self) -> Option<*mut Widget> {
+        match self.parent {
+            Some(ref val) => Some(val.clone()),
+            None => None
+        }
     }
 
-    fn widget_obj_mut(&mut self) -> &mut WidgetObj {
-        self
+    fn set_parent(&mut self, parent: Option<*mut Widget>) {
+        self.parent = parent;
+    }
+
+    fn children(&self) -> Vec<Rc<RefCell<Widget>>> {
+        self.children.clone()
+    }
+
+    fn remove_child_by_id(&mut self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        let position = self.children.iter().position(|x| x.borrow().id() == id);
+        match position {
+            Some(index) => {
+                let removed_child = self.children.swap_remove(index).clone();
+                removed_child.borrow_mut().set_parent(None);
+                Some(removed_child)
+            },
+            _ => None
+        }
+    }
+
+    fn remove_child_by_child(&mut self, child: &mut Widget) {
+        let position = self.children.iter().position(|x| x.borrow().id() == child.id());
+        match position {
+            Some(index) => {
+                self.children.swap_remove(index).clone();
+                child.set_parent(None);
+            },
+            _ => {}
+        }
+    }
+
+    fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        match self.children.iter().position(|x| x.borrow().id() == id) {
+            Some(index) => Some(self.children.get(index).unwrap().clone()),
+            _ => None
+        }
+    }
+
+    fn push_child(&mut self, new_child: Rc<RefCell<Widget>>) {
+        panic!("push_child will never work on WidgetObj");
+    }
+
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    fn pos(&self) -> (u32, u32) {
+        self.pos
+    }
+
+    fn set_pos(&mut self, p: (u32, u32)) {
+        self.pos = p;
+    }
+
+    fn size(&self) -> (u32, u32) {
+        self.size
+    }
+
+    fn set_size(&mut self, s: (u32, u32)) {
+        self.size = s;
+    }
+
+    fn fixed_size(&self) -> (u32, u32) {
+        self.fixed_size
+    }
+
+    fn set_fixed_size(&mut self, s: (u32, u32)) {
+        self.fixed_size = s;
+    }
+
+    fn font_size(&self) -> i32 {
+        match self.theme {
+            Some(ref val) => {
+                if self.font_size < 0 {
+                    return val.borrow().standard_font_size();
+                }
+
+                return self.font_size;
+            },
+            None => self.font_size
+        }
+    }
+
+    fn set_font_size(&mut self, s: i32) {
+        self.font_size = s;
+    }
+
+    fn theme(&self) -> Option<Rc<RefCell<Theme>>> {
+        match self.theme {
+            Some(ref val) => Some(val.clone()),
+            None => None
+        }
+    }
+
+    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>) {
+        self.theme = theme
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    fn tooltip(&self) -> String {
+        self.tooltip.clone()
+    }
+
+    fn set_tooltip(&mut self, tooltip: String) {
+        self.tooltip = tooltip.clone();
+    }
+
+    fn visible(&self) -> bool {
+        self.visible
+    }
+
+    fn absolute_position(&self) -> (u32, u32) {
+        match self.parent {
+            Some(val) =>  {
+                unsafe {
+                    let (par_x, par_y) = (*val).absolute_position();
+                    (par_x + self.pos().0, par_y + self.pos().1)
+                }
+            },
+            None => self.pos.clone()
+        }
+    }
+
+    fn visible_recursive(&self) -> bool {
+        if !self.visible {
+            return false
+        }
+
+        match self.parent{
+            Some(val) => unsafe { (*val).visible_recursive() },
+            None => self.visible
+        }
+    }
+
+    fn contains(&self, p: (u32, u32)) -> bool {
+        // TODO
+        return false
+    }
+
+    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
+        // TODO
+        return None
+    }
+
+    fn draw(&self, nanovg_context: &nanovg::Context) {
+        for child in &self.children {
+            child.borrow().draw(nanovg_context);
+        }
+    }
+}
+
+#[allow(unused_variables)]
+impl Widget for WidgetObjRef {
+    fn parent(&self) -> Option<*mut Widget> {
+        match self.0.borrow().parent() {
+            Some(val) => Some(val),
+            None => None
+        }
+    }
+
+    fn set_parent(&mut self, parent: Option<*mut Widget>) {
+        self.0.borrow_mut().set_parent(parent);
+    }
+
+    fn children(&self) -> Vec<Rc<RefCell<Widget>>> {
+        let children: Vec<Rc<RefCell<Widget>>>;
+        {
+            let obj_borrow = self.0.borrow();
+            children = obj_borrow.children.clone();
+        }
+        return children;
+    }
+
+    fn remove_child_by_id(&mut self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        self.0.borrow_mut().remove_child_by_id(id)
+    }
+
+    fn remove_child_by_child(&mut self, child: &mut Widget) {
+        self.0.borrow_mut().remove_child_by_child(child)
+    }
+
+    fn push_child(&mut self, new_child: Rc<RefCell<Widget>>) {
+        {
+            let child_id: String;
+            let mut parent: Option<*mut Widget> = None;
+            {
+                let new_child_borrow = new_child.borrow();
+                child_id = new_child_borrow.id().clone();
+                match new_child_borrow.parent() {
+                    Some(val) => parent = Some(val),
+                    _ => {}
+                }
+            }
+
+            if self.0.borrow().id() == child_id {
+                panic!("Do not add a widget to itself.");
+            }
+
+            match parent {
+                Some(val) => { unsafe { (*val).remove_child_by_id(child_id); } },
+                None => {}
+            }
+        }
+        {
+            new_child.borrow_mut().set_parent(Some(&mut *self));
+        }
+        self.0.borrow_mut().children.push(new_child);
+    }
+
+    fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
+        self.0.borrow().get_child_by_id(id)
+    }
+
+    fn id(&self) -> String {
+        self.0.borrow().id.clone()
+    }
+
+    fn pos(&self) -> (u32, u32) {
+        self.0.borrow().pos
+    }
+
+    fn set_pos(&mut self, p: (u32, u32)) {
+        self.0.borrow_mut().pos = p;
+    }
+
+    fn size(&self) -> (u32, u32) {
+        self.0.borrow().size
+    }
+
+    fn set_size(&mut self, s: (u32, u32)) {
+        self.0.borrow_mut().size = s;
+    }
+
+    fn fixed_size(&self) -> (u32, u32) {
+        self.0.borrow().fixed_size
+    }
+
+    fn set_fixed_size(&mut self, s: (u32, u32)) {
+        self.0.borrow_mut().fixed_size = s;
+    }
+
+    fn font_size(&self) -> i32 {
+        self.0.borrow().font_size
+    }
+
+    fn set_font_size(&mut self, s: i32) {
+        self.0.borrow_mut().font_size = s;
+    }
+
+    fn theme(&self) -> Option<Rc<RefCell<Theme>>> {
+        let mut theme: Option<Rc<RefCell<Theme>>> = None;
+        {
+            let obj_borrow = self.0.borrow();
+            match obj_borrow.theme() {
+                Some(ref val) => theme = Some(val.clone()),
+                _ => {}
+            }
+        }
+        return theme;
+    }
+
+    fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>) {
+        self.0.borrow_mut().theme = theme;
+    }
+
+    fn enabled(&self) -> bool {
+        self.0.borrow().enabled
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.0.borrow_mut().enabled = enabled;
+    }
+
+    fn tooltip(&self) -> String {
+        self.0.borrow().tooltip.clone()
+    }
+
+    fn set_tooltip(&mut self, tooltip: String) {
+        self.0.borrow_mut().tooltip = tooltip.clone();
+    }
+
+    fn visible(&self) -> bool {
+        self.0.borrow().visible
+    }
+
+    fn draw(&self, nanovg_context: &nanovg::Context) {
+        self.0.borrow().draw(nanovg_context);
+    }
+
+    fn absolute_position(&self) -> (u32, u32) {
+        match self.parent() {
+            Some(val) =>  {
+                unsafe {
+                    let (par_x, par_y) = (*val).absolute_position();
+                    (par_x + self.pos().0, par_y + self.pos().1)
+                }
+            },
+            None => self.pos().clone()
+        }
+    }
+
+    fn visible_recursive(&self) -> bool {
+        if !self.visible() {
+            return false
+        }
+
+        match self.parent() {
+            Some(val) => unsafe { (*val).visible_recursive() },
+            None => self.visible()
+        }
+    }
+
+    fn contains(&self, p: (u32, u32)) -> bool {
+        // TODO
+        return false
+    }
+
+    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
+        // TODO
+        return None
+    }
+}
+
+impl Drop for WidgetObjRef {
+    fn drop(&mut self) {
+        println!("dropping widgetobjref {}", self.0.borrow().id());
+        //drop(self.0);
+    }
+}
+
+impl Drop for WidgetObj {
+    fn drop(&mut self) {
+        println!("dropping widgetobj {}", self.id);
+        for child in &self.children {
+            {
+                println!("setting child {} parent to None", child.borrow().id());
+            }
+            child.borrow_mut().set_parent(None)
+        }
     }
 }
 
 impl WidgetObjRef {
     pub fn new(id: String, parent: Option<Rc<RefCell<Widget>>>) -> WidgetObjRef {
-        let parent_theme: Option<Rc<RefCell<Theme>>> = match parent {
+
+        let mut parent_pointer: Option<*mut Widget> = None;
+        let mut parent_theme: Option<Rc<RefCell<Theme>>> = None;
+        match parent {
             Some(ref val) => {
-                match *val.borrow().theme() {
-                    Some(ref val) => Some(val.clone()),
-                    None => None
-                }
+                match val.borrow().theme() {
+                    Some(ref val) => { parent_theme = Some(val.clone()); },
+                    None => {}
+                };
+                parent_pointer = Some(val.borrow_mut().deref_mut() as *mut Widget);
             },
-            None => None
+            None => {}
         };
-        let parent_weak: Option<Weak<RefCell<Widget>>> = match parent {
-            Some(ref val) => Some(Rc::downgrade(val)),
-            None => None
-        };
+
         WidgetObjRef(Rc::new(RefCell::new(WidgetObj {
-            parent: parent_weak,
+            parent: parent_pointer,
             children: Vec::new(),
             theme: parent_theme,
             id: id,
@@ -237,145 +459,5 @@ impl WidgetObjRef {
             tooltip: String::new(),
             font_size: 12
         })))
-    }
-
-    pub fn push_child(&self, new_child: Rc<RefCell<WidgetObj>>) {
-        {
-            let child_id: String;
-            let mut parent: Option<Weak<RefCell<Widget>>> = None;
-            {
-                let new_child_borrow = new_child.borrow();
-                child_id = new_child_borrow.id().clone();
-                match new_child_borrow.parent {
-                    Some(ref val) => parent = Some(val.clone()),
-                    _ => {}
-                }
-            }
-
-            if self.0.borrow().id() == child_id {
-                panic!("Do not add a widget to itself.");
-            }
-
-            match parent {
-                Some(ref val) => {
-                    let upgraded_parent = match val.upgrade() {
-                        Some(val) => val,
-                        None => {panic!("Uh-oh");}
-                    };
-                    upgraded_parent.borrow_mut().remove_child_by_id(child_id);
-                },
-                _ => {}
-            }
-        }
-        {
-            new_child.borrow_mut().parent = Some(Rc::downgrade(&(self.0.clone() as Rc<RefCell<Widget>>)));
-        }
-        self.0.borrow_mut().children.push(new_child);
-    }
-
-    // === Widget implementation ==
-    pub fn parent(&self) -> Option<Weak<RefCell<Widget>>> {
-        let mut parent: Option<Weak<RefCell<Widget>>> = None;
-        {
-            let obj_borrow = self.0.borrow();
-            match *obj_borrow.parent() {
-                Some(ref val) => parent = Some(val.clone()),
-                _ => {}
-            }
-        }
-        return parent;
-    }
-
-    pub fn children(&self) -> Vec<Rc<RefCell<Widget>>> {
-        let children: Vec<Rc<RefCell<Widget>>>;
-        {
-            let obj_borrow = self.0.borrow();
-            children = obj_borrow.children.clone();
-        }
-        return children;
-    }
-
-    pub fn remove_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
-        self.0.borrow_mut().remove_child_by_id(id)
-    }
-
-    pub fn remove_child_by_child(&self, child: &mut Widget) {
-        self.0.borrow_mut().remove_child_by_child(child)
-    }
-
-    pub fn get_child_by_id(&self, id: String) -> Option<Rc<RefCell<Widget>>> {
-        self.0.borrow().get_child_by_id(id)
-    }
-
-    pub fn id(&self) -> String {
-        self.0.borrow().id.clone()
-    }
-
-    pub fn pos(&self) -> (u32, u32) {
-        self.0.borrow().pos
-    }
-
-    pub fn set_pos(&self, p: (u32, u32)) {
-        self.0.borrow_mut().pos = p;
-    }
-
-    pub fn size(&self) -> (u32, u32) {
-        self.0.borrow().size
-    }
-
-    pub fn set_size(&self, s: (u32, u32)) {
-        self.0.borrow_mut().size = s;
-    }
-
-    pub fn fixed_size(&self) -> (u32, u32) {
-        self.0.borrow().fixed_size
-    }
-
-    pub fn set_fixed_size(&self, s: (u32, u32)) {
-        self.0.borrow_mut().fixed_size = s;
-    }
-
-    pub fn font_size(&self) -> i32 {
-        self.0.borrow().font_size
-    }
-
-    pub fn set_font_size(&self, s: i32) {
-        self.0.borrow_mut().font_size = s;
-    }
-
-    pub fn theme(&self) -> Option<Rc<RefCell<Theme>>> {
-        let mut theme: Option<Rc<RefCell<Theme>>> = None;
-        {
-            let obj_borrow = self.0.borrow();
-            match *obj_borrow.theme() {
-                Some(ref val) => theme = Some(val.clone()),
-                _ => {}
-            }
-        }
-        return theme;
-    }
-
-    pub fn set_theme(&self, theme: Option<Rc<RefCell<Theme>>>) {
-        self.0.borrow_mut().theme = theme;
-    }
-
-    pub fn enabled(&self) -> bool {
-        self.0.borrow().enabled
-    }
-
-    pub fn set_enabled(&self, enabled: bool) {
-        self.0.borrow_mut().enabled = enabled;
-    }
-
-    pub fn tooltip(&self) -> String {
-        self.0.borrow().tooltip.clone()
-    }
-
-    pub fn set_tooltip(&self, tooltip: String) {
-        self.0.borrow_mut().tooltip = tooltip.clone();
-    }
-
-    pub fn visible(&self) -> bool {
-        self.0.borrow().visible
     }
 }
