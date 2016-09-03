@@ -1,4 +1,4 @@
-#![feature(plugin, rc_counts)]
+#![feature(plugin)]
 #![plugin(interpolate_idents)]
 
 mod gl {
@@ -10,5 +10,6 @@ pub mod common;
 pub mod resources;
 pub mod theme;
 pub mod widget;
+pub mod widget_container;
 pub mod screen;
 pub mod label;
