@@ -73,3 +73,17 @@ macro_rules! impl_get_set_borrow {
         }
     }
 }
+
+#[macro_export]
+macro_rules! impl_get_set_clone {
+    ($var_name:ident, $t:ty) => {
+        interpolate_idents! {
+            pub fn $var_name(&self) -> $t {
+                self.$var_name.clone()
+            }
+            pub fn [set_ $var_name](&mut self, new_val: $t) {
+                self.$var_name = new_val
+            }
+        }
+    }
+}

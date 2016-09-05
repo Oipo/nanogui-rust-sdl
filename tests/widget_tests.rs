@@ -6,14 +6,12 @@ use nanoguirustsdl::widget_container::{push_child, remove_child_by_child};
 use nanoguirustsdl::theme::Theme;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::ops::DerefMut;
-
 
 #[test]
 fn push_and_remove_child_test() {
-    let mut widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
-    let mut widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
-    let mut widget_three = Rc::new(RefCell::new(WidgetObj::new("three".to_string())));
+    let widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
+    let widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
+    let widget_three = Rc::new(RefCell::new(WidgetObj::new("three".to_string())));
 
     {
         push_child(widget_one.clone(), widget_two.clone());
@@ -72,8 +70,8 @@ fn push_and_remove_child_test() {
 
 #[test]
 fn parent_test() {
-    let mut widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
-    let mut widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
+    let widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
+    let widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
     push_child(widget_one.clone(), widget_two.clone());
 
     let widget_two_borrowed = widget_two.borrow();
@@ -91,10 +89,10 @@ fn parent_test() {
 #[test]
 fn dropped_parent_test() {
     println!("smh");
-    let mut widget_two: Option<Rc<RefCell<WidgetObj>>>;
+    let widget_two: Option<Rc<RefCell<WidgetObj>>>;
     {
-        let mut widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
-        let mut temp_widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
+        let widget_one = Rc::new(RefCell::new(WidgetObj::new("one".to_string())));
+        let temp_widget_two = Rc::new(RefCell::new(WidgetObj::new("two".to_string())));
         //println!("address one: {:p}", &widget_one);
         //println!("address two: {:p}", &temp_widget_two);
         push_child(widget_one.clone(), temp_widget_two.clone());
@@ -105,7 +103,7 @@ fn dropped_parent_test() {
     let unwrapped_borrowed = unwrapped.borrow();
     //println!("address unwrap: {:p}", &unwrapped);
 
-    if let Some(ref parent) = unwrapped_borrowed.parent() {
+    if unwrapped_borrowed.parent().is_some() {
         panic!("parent should be None");
     }
 }

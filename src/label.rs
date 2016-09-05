@@ -5,9 +5,10 @@ use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use widget::{Widget, WidgetObj};
 use theme::Theme;
+use layout::Layout;
+use window::Window;
 
-#[allow(dead_code)]
-pub struct LabelObj {
+pub struct Label {
     widget: WidgetObj,
     caption: String,
     font: String,
@@ -15,8 +16,7 @@ pub struct LabelObj {
     color: (f32, f32, f32, f32)
 }
 
-#[allow(unused_variables)]
-impl Widget for LabelObj {
+impl Widget for Label {
     fn parent(&self) -> Option<&Weak<RefCell<Widget>>> {
         self.widget.parent.as_ref()
     }
@@ -64,11 +64,11 @@ impl Widget for LabelObj {
         self.widget.fixed_size = s;
     }
 
-    fn font_size(&self) -> i32 {
-        self.widget.font_size
+    fn font_size(&self) -> u32 {
+        self.widget.font_size()
     }
 
-    fn set_font_size(&mut self, s: i32) {
+    fn set_font_size(&mut self, s: Option<u32>) {
         self.widget.font_size = s;
     }
 
@@ -100,6 +100,47 @@ impl Widget for LabelObj {
         self.widget.visible
     }
 
+    fn set_visible(&mut self, visible: bool) {
+        self.widget.visible = visible;
+    }
+
+    fn focused(&self) -> bool {
+        self.widget.focused
+    }
+
+    fn set_focused(&mut self, focused: bool) {
+        self.widget.focused = focused;
+    }
+
+    fn layout(&self) -> Option<&Box<Layout>> {
+        self.widget.layout.as_ref()
+    }
+
+    fn set_layout(&mut self, layout: Option<Box<Layout>>) {
+        self.widget.layout = layout;
+    }
+
+    fn preferred_size(&self, nanovg_context: &nanovg::Context) -> (u32, u32) {
+        if self.caption.len() == 0 {
+            return (0, 0);
+        }
+
+        nanovg_context.font_face(&self.font);
+        nanovg_context.font_size(self.font_size() as f32);
+
+        if self.widget.fixed_size.0 > 0 {
+            let mut bounds = [0f32; 4];
+            nanovg_context.text_align(nanovg::LEFT | nanovg::MIDDLE);
+            nanovg_context.text_box_bounds(self.widget.pos.0 as f32, self.widget.pos.1 as f32, self.widget.fixed_size.0 as f32, &self.caption, &mut bounds);
+            return (self.widget.fixed_size.0, (bounds[3] - bounds[1]) as u32)
+        } else {
+            nanovg_context.text_align(nanovg::LEFT | nanovg::MIDDLE);
+            let size_x = nanovg_context.text_bounds(0u32 as f32, 0u32 as f32, &self.caption, None);
+            let theme = self.widget.theme.as_ref().unwrap();
+            return (size_x as u32, theme.borrow().standard_font_size())
+        }
+    }
+
     fn draw(&self, nanovg_context: &nanovg::Context) {
         for child in &self.widget.children {
             let p_mut = child.borrow_mut();
@@ -113,7 +154,7 @@ impl Widget for LabelObj {
             self.widget.pos().0, self.widget.pos().1);*/
 
         nanovg_context.font_face(&self.font);
-        nanovg_context.font_size(self.widget.font_size as f32);
+        nanovg_context.font_size(self.widget.font_size() as f32);
         nanovg_context.fill_color(nanovg::Color::rgba_f(self.color.0 as f32, self.color.1 as f32, self.color.2 as f32, self.color.3 as f32));
         if self.widget.fixed_size.0 > 0 {
             nanovg_context.text_align(nanovg::LEFT | nanovg::TOP);
@@ -150,19 +191,17 @@ impl Widget for LabelObj {
     }
 
     fn contains(&self, p: (u32, u32)) -> bool {
-        // TODO
-        return false
+        return p.0 >= self.widget.pos.0 && p.1 >= self.widget.pos.1 && p.0 < self.widget.pos.0 + self.widget.size.0 && p.1 < self.widget.pos.1 + self.widget.size.1;
     }
 
-    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
-        // TODO
-        return None
+    fn as_window(&self) -> Option<&Window> {
+        None
     }
 }
 
-impl LabelObj {
-    pub fn new_create_font(id: String, caption: String, font_filename: String, nanovg_context: &nanovg::Context) -> Rc<RefCell<LabelObj>> {
-        Rc::new(RefCell::new(LabelObj {
+impl Label {
+    pub fn new_create_font(id: String, caption: String, font_filename: String, nanovg_context: &nanovg::Context) -> Rc<RefCell<Label>> {
+        Rc::new(RefCell::new(Label {
             widget: WidgetObj::new(id),
             caption: caption,
             color: (255.0, 255.0, 255.0, 125.0),
@@ -171,8 +210,8 @@ impl LabelObj {
         }))
     }
 
-    pub fn new(id: String, caption: String, font: nanovg::Font) -> Rc<RefCell<LabelObj>> {
-        Rc::new(RefCell::new(LabelObj {
+    pub fn new(id: String, caption: String, font: nanovg::Font) -> Rc<RefCell<Label>> {
+        Rc::new(RefCell::new(Label {
             widget: WidgetObj::new(id),
             caption: caption,
             color: (255.0, 255.0, 255.0, 125.0),

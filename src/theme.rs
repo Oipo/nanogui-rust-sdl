@@ -8,13 +8,13 @@ pub struct Theme {
     font_bold: Option<nanovg::Font>,
     font_icons: Option<nanovg::Font>,
 
-    standard_font_size: i32,
-    button_font_size: i32,
-    textbox_font_size: i32,
-    window_corner_radius: i32,
-    window_header_height: i32,
-    window_dropshadow_size: i32,
-    button_corner_radius: i32,
+    standard_font_size: u32,
+    button_font_size: u32,
+    textbox_font_size: u32,
+    window_corner_radius: u32,
+    window_header_height: u32,
+    window_dropshadow_size: u32,
+    button_corner_radius: u32,
 
     dropshadow: Color,
     transparent: Color,
@@ -175,13 +175,13 @@ impl Theme {
         self.font_icons = Some(new_val);
     }
 
-    impl_get_set!(standard_font_size, i32);
-    impl_get_set!(button_font_size, i32);
-    impl_get_set!(textbox_font_size, i32);
-    impl_get_set!(window_corner_radius, i32);
-    impl_get_set!(window_header_height, i32);
-    impl_get_set!(window_dropshadow_size, i32);
-    impl_get_set!(button_corner_radius, i32);
+    impl_get_set!(standard_font_size, u32);
+    impl_get_set!(button_font_size, u32);
+    impl_get_set!(textbox_font_size, u32);
+    impl_get_set!(window_corner_radius, u32);
+    impl_get_set!(window_header_height, u32);
+    impl_get_set!(window_dropshadow_size, u32);
+    impl_get_set!(button_corner_radius, u32);
 
     impl_get_set!(dropshadow, Color);
     impl_get_set!(transparent, Color);

@@ -4,13 +4,14 @@ use std::fmt;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use theme::Theme;
+use layout::Layout;
+use window::Window;
 
-#[allow(dead_code)]
 pub struct WidgetObj {
     pub parent: Option<Weak<RefCell<Widget>>>,
     pub children: Vec<Rc<RefCell<Widget>>>,
     pub theme: Option<Rc<RefCell<Theme>>>,
-    //pub layout: layout,
+    pub layout: Option<Box<Layout>>,
     pub id: String,
     pub pos: (u32, u32),
     pub size: (u32, u32),
@@ -20,7 +21,7 @@ pub struct WidgetObj {
     pub focused: bool,
     pub mouse_focus: bool,
     pub tooltip: String,
-    pub font_size: i32,
+    pub font_size: Option<u32>,
     //pub cursor: cursor
 }
 
@@ -29,6 +30,7 @@ pub trait Widget {
     unsafe fn set_parent(&mut self, Option<Rc<RefCell<Widget>>>);
     fn children(&self) -> Vec<Rc<RefCell<Widget>>>;
     unsafe fn children_mut(&mut self) -> &mut Vec<Rc<RefCell<Widget>>>;
+
     fn id(&self) -> String;
     fn pos(&self) -> (u32, u32);
     fn set_pos(&mut self, p: (u32, u32));
@@ -36,8 +38,8 @@ pub trait Widget {
     fn set_size(&mut self, s: (u32, u32));
     fn fixed_size(&self) -> (u32, u32);
     fn set_fixed_size(&mut self, s: (u32, u32));
-    fn font_size(&self) -> i32;
-    fn set_font_size(&mut self, s: i32);
+    fn font_size(&self) -> u32;
+    fn set_font_size(&mut self, s: Option<u32>);
     fn theme(&self) -> Option<&Rc<RefCell<Theme>>>;
     fn set_theme(&mut self, theme: Option<Rc<RefCell<Theme>>>);
     fn enabled(&self) -> bool;
@@ -45,11 +47,20 @@ pub trait Widget {
     fn tooltip(&self) -> String;
     fn set_tooltip(&mut self, tooltip: String);
     fn visible(&self) -> bool;
+    fn set_visible(&mut self, bool);
+    fn focused(&self) -> bool;
+    fn set_focused(&mut self, bool);
+    fn layout(&self) -> Option<&Box<Layout>>;
+    fn set_layout(&mut self, Option<Box<Layout>>);
+
     fn absolute_position(&self) -> (u32, u32);
     fn visible_recursive(&self) -> bool;
     fn contains(&self, p: (u32, u32)) -> bool;
-    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>>;
+    fn preferred_size(&self, &nanovg::Context) -> (u32, u32);
     fn draw(&self, nanovg_context: &nanovg::Context);
+
+    // casts
+    fn as_window(&self) -> Option<&Window>;
 }
 
 impl PartialEq for Widget {
@@ -64,7 +75,6 @@ impl fmt::Debug for Widget {
     }
 }
 
-#[allow(unused_variables)]
 impl Widget for WidgetObj {
     fn parent(&self) -> Option<&Weak<RefCell<Widget>>> {
         self.parent.as_ref()
@@ -113,11 +123,17 @@ impl Widget for WidgetObj {
         self.fixed_size = s;
     }
 
-    fn font_size(&self) -> i32 {
-        self.font_size
+    fn font_size(&self) -> u32 {
+        match self.font_size {
+            Some(val) => val,
+            None => { match self.theme {
+                Some(ref theme_val) => theme_val.borrow().standard_font_size(),
+                None => 0u32
+            } }
+        }
     }
 
-    fn set_font_size(&mut self, s: i32) {
+    fn set_font_size(&mut self, s: Option<u32>) {
         self.font_size = s;
     }
 
@@ -149,6 +165,26 @@ impl Widget for WidgetObj {
         self.visible
     }
 
+    fn set_visible(&mut self, visible: bool) {
+        self.visible = visible;
+    }
+
+    fn focused(&self) -> bool {
+        self.focused
+    }
+
+    fn set_focused(&mut self, focused: bool) {
+        self.focused = focused;
+    }
+
+    fn layout(&self) -> Option<&Box<Layout>> {
+        self.layout.as_ref()
+    }
+
+    fn set_layout(&mut self, layout: Option<Box<Layout>>) {
+        self.layout = layout;
+    }
+
     fn absolute_position(&self) -> (u32, u32) {
         if let Some(ref val) = self.parent {
             if let Some(ref val_upgraded) = val.upgrade() {
@@ -158,6 +194,13 @@ impl Widget for WidgetObj {
         }
 
         return self.pos.clone();
+    }
+
+    fn preferred_size(&self, nanovg_context: &nanovg::Context) -> (u32, u32) {
+        match self.layout {
+            Some(ref val) => val.preferred_size(nanovg_context, self),
+            None => self.size
+        }
     }
 
     fn draw(&self, nanovg_context: &nanovg::Context) {
@@ -182,13 +225,11 @@ impl Widget for WidgetObj {
     }
 
     fn contains(&self, p: (u32, u32)) -> bool {
-        // TODO
-        return false
+        return p.0 >= self.pos.0 && p.1 >= self.pos.1 && p.0 < self.pos.0 + self.size.0 && p.1 < self.pos.1 + self.size.1;
     }
 
-    fn find_widget(&self, p: (u32, u32)) -> Option<Box<Widget>> {
-        // TODO
-        return None
+    fn as_window(&self) -> Option<&Window> {
+        None
     }
 }
 
@@ -197,8 +238,6 @@ impl Drop for WidgetObj {
         println!("dropping widgetobj {}", self.id);
         while let Some(child) = self.children.pop() {
             unsafe {
-                println!("address child: {:p}", child);
-                println!("unlinking child {}", child.borrow().id());
                 child.borrow_mut().set_parent(None);
             }
         }
@@ -211,6 +250,7 @@ impl WidgetObj {
             parent: None,
             children: Vec::new(),
             theme: None,
+            layout: None,
             id: id,
             pos: (0, 0),
             size: (0, 0),
@@ -220,7 +260,7 @@ impl WidgetObj {
             focused: false,
             mouse_focus: false,
             tooltip: String::new(),
-            font_size: 12
+            font_size: Some(12)
         }
     }
 }

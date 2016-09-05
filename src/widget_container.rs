@@ -1,4 +1,6 @@
-use std::rc::{Rc, Weak};
+extern crate nanovg;
+
+use std::rc::Rc;
 use std::cell::RefCell;
 use widget::Widget;
 
@@ -34,7 +36,7 @@ pub fn push_child(container: Rc<RefCell<Widget>>, new_child: Rc<RefCell<Widget>>
 }
 
 pub fn remove_child_by_id(container: Rc<RefCell<Widget>>, id: String) {
-    let mut position: Option<usize> = None;
+    let position: Option<usize>;
     {
         position = container.borrow().children().iter().position(|x| x.borrow().id() == id);
     }
@@ -47,9 +49,25 @@ pub fn remove_child_by_id(container: Rc<RefCell<Widget>>, id: String) {
 }
 
 pub fn remove_child_by_child(container: Rc<RefCell<Widget>>, child: Rc<RefCell<Widget>>) {
-    let mut id: String = "".to_string();
+    let id: String;
     {
         id = child.borrow().id();
     }
     remove_child_by_id(container, id);
+}
+
+pub fn find_widget(container: Rc<RefCell<Widget>>, p: (u32, u32)) -> Option<Rc<RefCell<Widget>>> {
+    let borrow_container = container.borrow();
+    for child in &borrow_container.children() {
+        let borrow_child = child.borrow();
+        let new_p = (p.0 - borrow_container.pos().0, p.1 - borrow_container.pos().1);
+        if borrow_child.visible() && borrow_child.contains(new_p) {
+            return find_widget(child.clone(), new_p);
+        }
+    }
+
+    return match borrow_container.contains(p) {
+        true => Some(container.clone()),
+        false => None
+    }
 }

@@ -1,32 +1,21 @@
-extern crate sdl2;
-extern crate sdl2_sys;
 extern crate nanovg;
 
-use std::cell::RefCell;
 use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 use widget::{Widget, WidgetObj};
 use theme::Theme;
 use layout::Layout;
-use window::Window;
 
-pub struct Screen {
+pub struct Window {
     widget: WidgetObj,
-    nanovg_context: nanovg::Context,
-    //focuspath?
-    framebuffer_size: (u32, u32),
-    pixel_ratio: f32,
-    mouse_state: i32,
-    modifiers: i32,
-    mouse_pos: (u32, u32),
-    drag_active: bool,
-    drag_widget: Option<WidgetObj>,
-    last_interaction: u32,
-    process_events: bool,
-    background: (f32, f32, f32),
-    caption: String
+    //button_panel: Option<Rc<RefCell<Widget>>>, // TODO
+    title: String,
+    modal: bool,
+    drag: bool
 }
 
-impl Widget for Screen {
+
+impl Widget for Window {
     fn parent(&self) -> Option<&Weak<RefCell<Widget>>> {
         self.widget.parent.as_ref()
     }
@@ -131,6 +120,7 @@ impl Widget for Screen {
     }
 
     fn preferred_size(&self, _: &nanovg::Context) -> (u32, u32) {
+        // TODO
         (0, 0)
     }
 
@@ -171,55 +161,21 @@ impl Widget for Screen {
     }
 
     fn as_window(&self) -> Option<&Window> {
-        None
+        Some(self)
     }
 }
 
-impl Screen {
-    pub fn new(id: String, caption: String, window: &mut sdl2::video::WindowRef) -> Screen {
-
-        let winsize = window.size();
-        window.set_title(&caption);
-
-        unsafe {
-            let mut screen: Screen = Screen {
-                widget: WidgetObj::new(id),
-                nanovg_context: nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES),
-                caption: caption,
-                framebuffer_size: winsize,
-                mouse_pos: (0, 0),
-                mouse_state: 0,
-                modifiers: 0,
-                drag_active: false,
-                drag_widget: None,
-                last_interaction: sdl2_sys::sdl::SDL_GetTicks(),
-                process_events: true,
-                background: (0.3, 0.3, 0.3),
-                pixel_ratio: 0.0
-            };
-
-            screen.set_size(winsize);
-            screen
-        }
+impl Window {
+    pub fn new(id: String, title: String) -> Rc<RefCell<Window>> {
+        Rc::new(RefCell::new(Window {
+            widget: WidgetObj::new(id),
+            title: title,
+            modal: false,
+            drag: false
+        }))
     }
 
-    pub fn draw_widgets(&self) {
-        if !self.widget.visible {
-            return
-        }
-
-        self.nanovg_context.begin_frame(self.widget.size.0, self.widget.size.1, 1.0);
-
-        self.draw(&self.nanovg_context);
-
-        self.nanovg_context.end_frame();
-    }
-
-    pub fn set_background(&mut self, background_color: (f32, f32, f32)) {
-        self.background = background_color;
-    }
-
-    pub fn nanovg_context(&self) -> &nanovg::Context {
-        &self.nanovg_context
-    }
+    impl_get_set_clone!(title, String);
+    impl_get_set!(modal, bool);
+    impl_get_set!(drag, bool);
 }
