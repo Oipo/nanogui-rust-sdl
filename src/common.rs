@@ -1,4 +1,14 @@
 use std::fmt;
+#[derive(PartialEq, Copy, Clone)]
+pub enum Cursor {
+    Arrow = 0,
+    IBeam,
+    Crosshair,
+    Hand,
+    HResize,
+    VResize,
+    CursorCount
+}
 
 #[derive(PartialEq, Copy, Clone)]
 pub struct Color {

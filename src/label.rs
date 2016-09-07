@@ -1,12 +1,18 @@
-extern crate sdl2;
 extern crate nanovg;
+extern crate sdl2;
+extern crate sdl2_sys;
 
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
+use self::sdl2::keyboard::{Mod, Scancode};
+use self::sdl2::mouse::Mouse;
+use self::sdl2_sys::keycode::SDL_Keymod;
+use common::Cursor;
 use widget::{Widget, WidgetObj};
 use theme::Theme;
 use layout::Layout;
 use window::Window;
+use screen::Screen;
 
 pub struct Label {
     widget: WidgetObj,
@@ -36,8 +42,14 @@ impl Widget for Label {
         &mut self.widget.children
     }
 
+    // get/set
+
     fn id(&self) -> String {
         self.widget.id.clone()
+    }
+
+    fn set_id(&mut self, id: String) {
+        self.widget.id = id;
     }
 
     fn pos(&self) -> (u32, u32) {
@@ -120,6 +132,20 @@ impl Widget for Label {
         self.widget.layout = layout;
     }
 
+    fn cursor(&self) -> Cursor {
+        self.widget.cursor
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        self.widget.cursor = cursor;
+    }
+
+    // misc
+
+    fn perform_layout(&self, nanovg_context: &nanovg::Context) {
+        self.widget.perform_layout(nanovg_context);
+    }
+
     fn preferred_size(&self, nanovg_context: &nanovg::Context) -> (u32, u32) {
         if self.caption.len() == 0 {
             return (0, 0);
@@ -194,7 +220,51 @@ impl Widget for Label {
         return p.0 >= self.widget.pos.0 && p.1 >= self.widget.pos.1 && p.0 < self.widget.pos.0 + self.widget.size.0 && p.1 < self.widget.pos.1 + self.widget.size.1;
     }
 
+    fn request_focus(&self) {
+        self.widget.request_focus();
+    }
+
+    // events
+
+    fn mouse_button_event(&self, p: (u32, u32), button: Mouse, down: bool, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_button_event(p, button, down, mods)
+    }
+
+    fn mouse_motion_event(&self, p: (u32, u32), rel: (u32, u32), button: Mouse, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_motion_event(p, rel, button, mods)
+    }
+
+    fn mouse_drag_event(&self, p: (u32, u32), rel: (u32, u32), button: Mouse, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_drag_event(p, rel, button, mods)
+    }
+
+    fn mouse_enter_event(&mut self, p: (u32, u32), enter: bool) -> bool {
+        self.widget.mouse_enter_event(p, enter)
+    }
+
+    fn scroll_event(&self, p: (u32, u32), rel: (u32, u32)) -> bool {
+        self.widget.scroll_event(p, rel)
+    }
+
+    fn focus_event(&mut self, focused: bool) -> bool {
+        self.widget.focus_event(focused)
+    }
+
+    fn keyboard_event(&self, key: Mod, scancode: Option<Scancode>, pressed: bool, mods: SDL_Keymod) -> bool {
+        self.widget.keyboard_event(key, scancode, pressed, mods)
+    }
+
+    fn keyboard_character_event(&self, codepoint: u32) -> bool {
+        self.widget.keyboard_character_event(codepoint)
+    }
+
+    // casts
+
     fn as_window(&self) -> Option<&Window> {
+        None
+    }
+
+    fn as_screen(&self) -> Option<&Screen> {
         None
     }
 }

@@ -1,9 +1,13 @@
+extern crate nanovg;
 extern crate sdl2;
 extern crate sdl2_sys;
-extern crate nanovg;
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
+use self::sdl2::keyboard::{Mod, Scancode};
+use self::sdl2::mouse::Mouse;
+use self::sdl2_sys::keycode::SDL_Keymod;
+use common::Cursor;
 use widget::{Widget, WidgetObj};
 use theme::Theme;
 use layout::Layout;
@@ -12,7 +16,7 @@ use window::Window;
 pub struct Screen {
     widget: WidgetObj,
     nanovg_context: nanovg::Context,
-    //focuspath?
+    focussed_widgets: Vec<Rc<RefCell<Widget>>>,
     framebuffer_size: (u32, u32),
     pixel_ratio: f32,
     mouse_state: i32,
@@ -46,8 +50,14 @@ impl Widget for Screen {
         &mut self.widget.children
     }
 
+    // get/set
+
     fn id(&self) -> String {
         self.widget.id.clone()
+    }
+
+    fn set_id(&mut self, id: String) {
+        self.widget.id = id;
     }
 
     fn pos(&self) -> (u32, u32) {
@@ -130,8 +140,22 @@ impl Widget for Screen {
         self.widget.layout = layout;
     }
 
-    fn preferred_size(&self, _: &nanovg::Context) -> (u32, u32) {
-        (0, 0)
+    fn cursor(&self) -> Cursor {
+        self.widget.cursor
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        self.widget.cursor = cursor;
+    }
+
+    // misc
+
+    fn perform_layout(&self, nanovg_context: &nanovg::Context) {
+        self.widget.perform_layout(nanovg_context);
+    }
+
+    fn preferred_size(&self, nanovg_context: &nanovg::Context) -> (u32, u32) {
+        self.widget.preferred_size(nanovg_context)
     }
 
     fn draw(&self, nanovg_context: &nanovg::Context) {
@@ -170,8 +194,52 @@ impl Widget for Screen {
         return p.0 >= self.widget.pos.0 && p.1 >= self.widget.pos.1 && p.0 < self.widget.pos.0 + self.widget.size.0 && p.1 < self.widget.pos.1 + self.widget.size.1;
     }
 
+    fn request_focus(&self) {
+    }
+
+    // events
+    // TODO
+
+    fn mouse_button_event(&self, p: (u32, u32), button: Mouse, down: bool, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_button_event(p, button, down, mods)
+    }
+
+    fn mouse_motion_event(&self, p: (u32, u32), rel: (u32, u32), button: Mouse, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_motion_event(p, rel, button, mods)
+    }
+
+    fn mouse_drag_event(&self, p: (u32, u32), rel: (u32, u32), button: Mouse, mods: SDL_Keymod) -> bool {
+        self.widget.mouse_drag_event(p, rel, button, mods)
+    }
+
+    fn mouse_enter_event(&mut self, p: (u32, u32), enter: bool) -> bool {
+        self.widget.mouse_enter_event(p, enter)
+    }
+
+    fn scroll_event(&self, p: (u32, u32), rel: (u32, u32)) -> bool {
+        self.widget.scroll_event(p, rel)
+    }
+
+    fn focus_event(&mut self, focused: bool) -> bool {
+        self.widget.focus_event(focused)
+    }
+
+    fn keyboard_event(&self, key: Mod, scancode: Option<Scancode>, pressed: bool, mods: SDL_Keymod) -> bool {
+        self.widget.keyboard_event(key, scancode, pressed, mods)
+    }
+
+    fn keyboard_character_event(&self, codepoint: u32) -> bool {
+        self.widget.keyboard_character_event(codepoint)
+    }
+
+    // casts
+
     fn as_window(&self) -> Option<&Window> {
         None
+    }
+
+    fn as_screen(&self) -> Option<&Screen> {
+        Some(self)
     }
 }
 
@@ -185,6 +253,7 @@ impl Screen {
             let mut screen: Screen = Screen {
                 widget: WidgetObj::new(id),
                 nanovg_context: nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES),
+                focussed_widgets: Vec::new(),
                 caption: caption,
                 framebuffer_size: winsize,
                 mouse_pos: (0, 0),
@@ -221,5 +290,13 @@ impl Screen {
 
     pub fn nanovg_context(&self) -> &nanovg::Context {
         &self.nanovg_context
+    }
+
+    pub fn update_focus(&self, widget: &Widget) {
+        /*for child in &self.focussed_widgets {
+            if w.borrow().focussed() {
+                //w.focus_event(false);
+            }
+        }*/
     }
 }
