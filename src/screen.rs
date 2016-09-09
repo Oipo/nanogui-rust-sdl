@@ -244,7 +244,7 @@ impl Widget for Screen {
 }
 
 impl Screen {
-    pub fn new(id: String, caption: String, window: &mut sdl2::video::WindowRef) -> Screen {
+    pub fn new(id: String, caption: String, window: &mut sdl2::video::WindowRef) -> Rc<RefCell<Screen>> {
 
         let winsize = window.size();
         window.set_title(&caption);
@@ -268,7 +268,7 @@ impl Screen {
             };
 
             screen.set_size(winsize);
-            screen
+            Rc::new(RefCell::new(screen))
         }
     }
 
@@ -276,6 +276,11 @@ impl Screen {
         if !self.widget.visible {
             return
         }
+
+        /*println!("drawing screen: ({} {}) - ({} {}) - @{} {}",
+            self.widget.size.0, self.widget.size.1,
+            self.widget.fixed_size.0, self.widget.fixed_size.1,
+            self.widget.pos.0, self.widget.pos.1);*/
 
         self.nanovg_context.begin_frame(self.widget.size.0, self.widget.size.1, 1.0);
 

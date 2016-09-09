@@ -6,15 +6,14 @@ extern crate nanoguirustsdl;
 extern crate nanovg;
 
 use std::process;
-use std::rc::{Rc, Weak};
-use std::cell::RefCell;
-use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::{GLProfile, WindowRef, GLContext};
-use nanoguirustsdl::screen::{ScreenObj};
-use nanoguirustsdl::label::{LabelObj};
+use nanoguirustsdl::screen::{Screen};
+use nanoguirustsdl::label::{Label};
 use nanoguirustsdl::widget::{Widget};
+use nanoguirustsdl::widget_container::push_child;
+use nanoguirustsdl::resources::SANS_FONT;
 
 fn init_gl(window: &WindowRef) -> GLContext {
     unsafe {gl::FrontFace(gl::CCW)};
@@ -55,16 +54,26 @@ fn main() {
 
     gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
     let gl_context = init_gl(&window);
+    match window.gl_make_current(&gl_context) {
+        Err(val) => {
+            println!("make_current error: {}", val);
+            return;
+        },
+        _ => {}
+    }
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let vg: nanovg::Context = nanovg::Context::create_gl3(nanovg::ANTIALIAS | nanovg::STENCIL_STROKES);
-    let mut screen: ScreenObj = ScreenObj::new("test screen".to_string(), "Test screen".to_string(), &mut window);
-    let mut label: Rc<RefCell<LabelObj>> = Rc::new(RefCell::new(LabelObj::new_create_font("test label".to_string(), "This is a label".to_string(), "Roboto-Regular.ttf".to_string(), screen.nanovg_context())));
+    let screen = Screen::new("test screen".to_string(), "Test screen".to_string(), &mut window);
+    //let font = vg.create_font_mem("SANS_FONT", SANS_FONT).unwrap();
+    let font = screen.borrow().nanovg_context().create_font("Roboto-Regular.ttf", "Roboto-Regular.ttf").unwrap();
+    let label = Label::new("test label".to_string(), "This is a label".to_string(), "Roboto-Regular.ttf".to_string(), Some(font));
+    //let label = Label::new_create_font("test label".to_string(), "This is a label".to_string(), "Roboto-Regular.ttf".to_string(), screen.borrow().nanovg_context());
     label.borrow_mut().set_size((200, 20));
     label.borrow_mut().set_fixed_size((200, 20));
-    label.borrow_mut().set_font_size(22);
-    screen.push_child(label.clone());
+    label.borrow_mut().set_font_size(Some(22));
+    label.borrow_mut().set_color((255, 255, 255, 255));
+    push_child(screen.clone(), label.clone());
 
     let mut posx = 0;
     let mut posy = 0;
@@ -78,6 +87,7 @@ fn main() {
             }
         }
 
+        unsafe {gl::Viewport(0, 0, 800, 600)};
         unsafe {gl::ClearColor(0.0, 0.0, 0.0, 0.0)};
         unsafe {gl::Clear(gl::COLOR_BUFFER_BIT|gl::DEPTH_BUFFER_BIT|gl::STENCIL_BUFFER_BIT)};
         unsafe {gl::Enable(gl::BLEND)};
@@ -85,11 +95,11 @@ fn main() {
         unsafe {gl::Enable(gl::CULL_FACE)};
         unsafe {gl::Disable(gl::DEPTH_TEST)};
 
-        screen.draw(&vg);
+
+        screen.borrow().draw_widgets();
 
         window.gl_swap_window();
 
-        label.borrow_mut().set_pos((posx, posy));
         posx += 1;
         posy += 1;
 
@@ -98,5 +108,7 @@ fn main() {
             posx = 0;
             posy = 0;
         }
+
+        label.borrow_mut().set_pos((posx, posy));
     }
 }

@@ -18,8 +18,8 @@ pub struct Label {
     widget: WidgetObj,
     caption: String,
     font: String,
-    nanovg_font: nanovg::Font,
-    color: (f32, f32, f32, f32)
+    nanovg_font: Option<nanovg::Font>,
+    color: (u8, u8, u8, u8)
 }
 
 impl Widget for Label {
@@ -168,26 +168,29 @@ impl Widget for Label {
     }
 
     fn draw(&self, nanovg_context: &nanovg::Context) {
-        for child in &self.widget.children {
-            let p_mut = child.borrow_mut();
-            p_mut.draw(nanovg_context);
+        self.widget.draw(nanovg_context);
+
+        /*println!("drawing label: \"{}\" - \"{}\" - {} - ({} {} {} {}) - ({} {}) - ({} {}) - @{} {}",
+            self.font, self.caption,
+            self.widget.font_size(),
+            self.color.0 as f32, self.color.1, self.color.2, self.color.3,
+            self.widget.size.0, self.widget.size.1,
+            self.widget.fixed_size.0 as f32, self.widget.fixed_size.1,
+            self.widget.pos.0, self.widget.pos.1);*/
+
+        match self.nanovg_font {
+            Some(ref val) => nanovg_context.font_face_id(val),
+            None => nanovg_context.font_face(&self.font)
         }
 
-        /*println!("drawing label: {} - {} - {} {} {} {} - @{} {}",
-            self.font,
-            self.widget.font_size(),
-            self.color.0, self.color.1, self.color.2, self.color.3,
-            self.widget.pos().0, self.widget.pos().1);*/
-
-        nanovg_context.font_face(&self.font);
         nanovg_context.font_size(self.widget.font_size() as f32);
-        nanovg_context.fill_color(nanovg::Color::rgba_f(self.color.0 as f32, self.color.1 as f32, self.color.2 as f32, self.color.3 as f32));
+        nanovg_context.fill_color(nanovg::Color::rgba(self.color.0, self.color.1, self.color.2, self.color.3));
         if self.widget.fixed_size.0 > 0 {
             nanovg_context.text_align(nanovg::LEFT | nanovg::TOP);
             nanovg_context.text_box(self.widget.pos.0 as f32, self.widget.pos.1 as f32, self.widget.fixed_size.0 as f32, &self.caption);
         } else {
             nanovg_context.text_align(nanovg::LEFT | nanovg::TOP);
-            nanovg_context.text_box(self.widget.pos.0 as f32, self.widget.pos.1 as f32 + self.widget.size.1 as f32 * 0.5, self.widget.fixed_size.0 as f32, &self.caption);
+            nanovg_context.text(self.widget.pos.0 as f32, (self.widget.pos.1 + self.widget.size.1 / 2) as f32, &self.caption);
         }
     }
 
@@ -274,19 +277,21 @@ impl Label {
         Rc::new(RefCell::new(Label {
             widget: WidgetObj::new(id),
             caption: caption,
-            color: (255.0, 255.0, 255.0, 125.0),
+            color: (255, 255, 255, 125),
             font: font_filename.clone(),
-            nanovg_font: nanovg_context.create_font(&font_filename, &font_filename).unwrap()
+            nanovg_font: Some(nanovg_context.create_font(&font_filename, &font_filename).unwrap())
         }))
     }
 
-    pub fn new(id: String, caption: String, font: nanovg::Font) -> Rc<RefCell<Label>> {
+    pub fn new(id: String, caption: String, font_filename: String, font: Option<nanovg::Font>) -> Rc<RefCell<Label>> {
         Rc::new(RefCell::new(Label {
             widget: WidgetObj::new(id),
             caption: caption,
-            color: (255.0, 255.0, 255.0, 125.0),
-            font: "".to_string(),
+            color: (255, 255, 255, 125),
+            font: font_filename.clone(),
             nanovg_font: font
         }))
     }
+
+    impl_get_set!(color, (u8, u8, u8, u8));
 }

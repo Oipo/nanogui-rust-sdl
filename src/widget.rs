@@ -280,6 +280,14 @@ impl Widget for WidgetObj {
     }
 
     fn draw(&self, nanovg_context: &nanovg::Context) {
+        if cfg!(feature = "draw-widget-box") {
+            nanovg_context.stroke_width(1.0);
+            nanovg_context.begin_path();
+            nanovg_context.rect(self.pos.0 as f32 - 0.5, self.pos.1 as f32 - 0.5, self.size.0 as f32 + 1.0, self.size.1 as f32 + 1.0);
+            nanovg_context.stroke_color(nanovg::Color::rgba(255, 0, 0, 255));
+            nanovg_context.stroke();
+        }
+
         for child in &self.children {
             let p_mut = child.borrow_mut();
             p_mut.draw(nanovg_context);
